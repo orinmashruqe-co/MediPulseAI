@@ -1,13 +1,13 @@
 # MediPulse AI — Clinical Vision, Triage & SBAR Intelligence Platform
 
-![Status](https://img.shields.io/badge/Platform-Live_Web_App-10b981?style=for-the-badge)
-![AI Engine](https://img.shields.io/badge/AI-Google_Gemini_Vision-38bdf8?style=for-the-badge)
-![Clinical Standard](https://img.shields.io/badge/Report_Format-PDF_SBAR-8b5cf6?style=for-the-badge)
-![Market](https://img.shields.io/badge/Built_For-Bangladesh_Clinics_%26_Telehealth-06b6d4?style=for-the-badge)
+![Status](https://shields.io)
+![AI Engine](https://shields.io)
+![Clinical Standard](https://shields.io)
+![Market](https://shields.io)
 
 **MediPulse AI** is an AI-first clinical & patient health assistant platform built for diagnostic centers, outpatient clinics, and telehealth partners. It bridges the gap between complex medical reports, handwritten prescriptions, and everyday patient understanding—turning raw lab sheets and symptoms into hospital-standard **PDF SBAR Clinical Reports** in seconds.
 
-> **Investor & Partner Pitch Deck:** Download [`MediPulse-AI-Pitch-Deck.pptx`](./MediPulse-AI-Pitch-Deck.pptx) directly from this repository for our 5-slide clinical & telehealth partnership overview.
+> **Investor & Partner Pitch Deck:** Download [`MediPulse-AI-Investor-Pitch-Deck.pptx`](./MediPulse-AI-Investor-Pitch-Deck.pptx) directly from this repository for our 5-slide clinical & telehealth partnership overview.
 
 ---
 
@@ -47,9 +47,9 @@
 ## Repository Structure
 
 ```text
-├── index.html                        # Complete MediPulse AI live web application
-├── MediPulse-AI-Pitch-Deck.pptx      # 5-slide Investor & Clinic Partnership Pitch Deck
-└── README.md                         # Product overview, clinical modules & market value
+├── index.html                                 # Complete MediPulse AI live web application
+├── MediPulse-AI-Investor-Pitch-Deck.pptx      # 5-slide Investor & Clinic Partnership Pitch Deck
+└── README.md                                  # Product overview, clinical modules & market value
 ```
 
 ---
