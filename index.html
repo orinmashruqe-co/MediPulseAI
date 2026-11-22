@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MediPulse AI — Clinical Vision, Triage & SBAR Health Studio</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --glass: rgba(10, 22, 38, 0.64);
+      --glass-light: rgba(255, 255, 255, 0.08);
+      --glass-border: rgba(255, 255, 255, 0.16);
+      --accent: #06b6d4;
+      --accent-2: #6366f1;
+      --accent-3: #10b981;
+      --text: #f8fafc;
+      --muted: #cbd5e1;
+      --warning: #f59e0b;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 18%, rgba(6, 182, 212, 0.42), transparent 42%),
+        radial-gradient(circle at 86% 22%, rgba(99, 102, 241, 0.42), transparent 44%),
+        radial-gradient(circle at 50% 88%, rgba(16, 185, 129, 0.30), transparent 46%),
+        linear-gradient(135deg, #060d18 0%, #0b172a 52%, #091322 100%);
+      background-attachment: fixed;
+    }
+    .glass-panel {
+      background: var(--glass);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--glass-border);
+      border-radius: 20px;
+      box-shadow: 0 14px 42px rgba(0, 0, 0, 0.38);
+    }
+    header {
+      position: sticky; top: 12px; z-index: 50;
+      max-width: 1260px; margin: 12px auto 0; padding: 12px 22px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px;
+      background: linear-gradient(90deg, #22d3ee, #818cf8, #34d399);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .brand-icon {
+      width: 38px; height: 38px; border-radius: 12px;
+      background: linear-gradient(135deg, #06b6d4, #6366f1);
+      display: flex; align-items: center; justify-content: center; color: #fff;
+      box-shadow: 0 4px 16px rgba(6, 182, 212, 0.42);
+    }
+    .nav-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .btn {
+      border: none; border-radius: 12px; padding: 10px 15px; font-size: 13px; font-weight: 600;
+      cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+      transition: transform 0.16s ease, box-shadow 0.2s ease, background 0.2s ease;
+      color: #fff;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn:active { transform: scale(0.97); }
+    .btn-grad {
+      background: linear-gradient(135deg, #0891b2, #4f46e5, #059669);
+      box-shadow: 0 6px 20px rgba(79, 70, 229, 0.36);
+    }
+    .btn-glass {
+      background: var(--glass-light);
+      border: 1px solid var(--glass-border);
+    }
+    .btn-glass:hover { background: rgba(255, 255, 255, 0.15); }
+    .btn-pdf {
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.24), rgba(6, 182, 212, 0.24));
+      border: 1px solid rgba(52, 211, 153, 0.45);
+    }
+    .btn-call {
+      background: linear-gradient(135deg, rgba(245, 158, 11, 0.22), rgba(234, 88, 12, 0.22));
+      border: 1px solid rgba(251, 191, 36, 0.45);
+      position: relative; padding-bottom: 18px;
+    }
+    .coming-tag {
+      position: absolute; bottom: 2px; left: 50%; transform: translateX(-50%);
+      font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase;
+      color: #fde047; white-space: nowrap;
+    }
+    .container { max-width: 1260px; margin: 22px auto; padding: 0 16px 40px; }
+    .layout-grid { display: grid; grid-template-columns: 280px 1fr 320px; gap: 20px; }
+    @media (max-width: 1024px) { .layout-grid { grid-template-columns: 1fr; } }
+    .card-pad { padding: 20px; }
+    input, textarea, select {
+      width: 100%; padding: 11px 14px; border-radius: 12px;
+      border: 1px solid var(--glass-border);
+      background: rgba(8, 16, 30, 0.72); color: #fff; font-size: 14px; margin-bottom: 12px;
+    }
+    input:focus, textarea:focus, select:focus { outline: none; border-color: var(--accent); }
+    label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 5px; }
+    .avatar {
+      width: 54px; height: 54px; border-radius: 50%; object-fit: cover;
+      border: 2px solid var(--accent); background: linear-gradient(135deg, #06b6d4, #6366f1);
+      display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 18px;
+    }
+    .tab-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+    .tab-btn {
+      padding: 8px 13px; border-radius: 11px; font-size: 12px; font-weight: 700; cursor: pointer;
+      border: 1px solid var(--glass-border); background: rgba(255,255,255,0.06); color: var(--muted);
+    }
+    .tab-btn.active {
+      background: linear-gradient(135deg, #0891b2, #4f46e5);
+      color: #fff; border-color: transparent;
+    }
+    .sbar-box {
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.12), rgba(99, 102, 241, 0.14));
+      border: 1px solid rgba(34, 211, 238, 0.35);
+      border-radius: 14px; padding: 14px; margin-top: 12px; font-size: 13px; line-height: 1.55;
+    }
+    .record-card { padding: 18px; margin-bottom: 16px; }
+    .post-media {
+      width: 100%; max-height: 320px; object-fit: cover; border-radius: 14px;
+      margin-top: 10px; border: 1px solid var(--glass-border);
+    }
+    .pill {
+      display: inline-block; padding: 3px 10px; border-radius: 999px; font-size: 11px; font-weight: 700;
+      background: rgba(6, 182, 212, 0.18); color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.35);
+    }
+    .pill.admin { background: rgba(245, 158, 11, 0.2); color: #fcd34d; border-color: rgba(245, 158, 11, 0.4); }
+    .chat-box {
+      height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;
+      padding: 10px; background: rgba(6, 13, 24, 0.6); border-radius: 12px; margin-bottom: 10px;
+    }
+    .msg-bubble {
+      padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.08);
+      font-size: 13px; max-width: 88%;
+    }
+    .msg-bubble.me {
+      align-self: flex-end;
+      background: linear-gradient(135deg, rgba(8, 145, 178, 0.55), rgba(79, 70, 229, 0.55));
+    }
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(3, 7, 18, 0.76); backdrop-filter: blur(8px);
+      display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+    }
+    .modal-bg.open { display: flex; }
+    .modal-card { max-width: 480px; width: 100%; padding: 24px; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+<header class="glass-panel">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4">
+        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+      </svg>
+    </div>
+    <span>MediPulse AI</span>
+  </div>
+
+  <div class="nav-actions">
+    <button class="btn btn-pdf" onclick="exportLatestOrActiveSbarPdf()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.2">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 18 15 15"/>
+      </svg>
+      <span>Download / Print PDF SBAR Report</span>
+    </button>
+
+    <button class="btn btn-call" onclick="showVoiceCallComingSoon()">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2.2">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+      </svg>
+      <span>AI Voice Follow-Up & Tele-Call</span>
+      <span class="coming-tag">Coming Soon</span>
+    </button>
+
+    <button class="btn btn-glass hidden" id="adminVaultBtn" onclick="openModal('adminModal')">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fcd34d" stroke-width="2.2">
+        <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+      <span>Admin Gemini Vault</span>
+    </button>
+
+    <button class="btn btn-grad" id="authHeaderBtn" onclick="openModal('authModal')">Patient / Doctor Sign In</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="layout-grid">
+    <!-- LEFT SIDEBAR: PATIENT HEALTH PROFILE & GEMINI STATUS -->
+    <aside>
+      <div class="glass-panel card-pad" style="margin-bottom:18px;">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;">
+          <img id="sideAvatarImg" class="avatar hidden" alt="Avatar" />
+          <div id="sideAvatarInitial" class="avatar">MP</div>
+          <div>
+            <div id="sideName" style="font-weight:700;font-size:16px;">Guest Patient</div>
+            <div id="sideRoleBadge"><span class="pill">Public Triage Mode</span></div>
+          </div>
+        </div>
+        <p id="sideMeta" style="font-size:13px;color:var(--muted);margin:0 0 14px;">
+          Sign in to save longitudinal SBAR clinical history, upload lab reports, and schedule AI follow-ups.
+        </p>
+
+        <div id="profileEditBox" class="hidden">
+          <label>Profile Photo</label>
+          <input type="file" accept="image/*" onchange="uploadAvatar(event)" />
+          <label>Full Name</label>
+          <input type="text" id="editNameInput" placeholder="Patient or Clinician Name" />
+          <label>Age, Blood Group & Allergies</label>
+          <input type="text" id="editMetaInput" placeholder="e.g., 32Y | O+ | No known drug allergies" />
+          <button class="btn btn-grad" style="width:100%" onclick="saveProfile()">Save Health Profile</button>
+        </div>
+      </div>
+
+      <div class="glass-panel card-pad">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <span style="font-weight:700;font-size:14px;">Clinical Gemini AI</span>
+          <span id="aiEngineStatus" class="pill">Checking...</span>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:0;">
+          Centralized master key governed by <code>orinmashruqe@gmail.com</code>. Powers Lab/Prescription Vision, Symptom Triage, Drug Interaction checks, and SBAR reports.
+        </p>
+      </div>
+    </aside>
+
+    <!-- CENTER WORKSPACE: 3 CLINICAL AI MODULES + REAL-TIME HISTORY -->
+    <main>
+      <div class="glass-panel card-pad" style="margin-bottom:20px;">
+        <div class="tab-row">
+          <button class="tab-btn active" id="tab_lab" onclick="switchClinicalTab('lab')">1. Lab Report & Prescription Vision AI</button>
+          <button class="tab-btn" id="tab_triage" onclick="switchClinicalTab('triage')">2. Symptom Triage & Specialist</button>
+          <button class="tab-btn" id="tab_drug" onclick="switchClinicalTab('drug')">3. Medication & Drug Interaction</button>
+        </div>
+
+        <p id="moduleHint" style="font-size:13px;color:var(--muted);margin:0 0 10px;">
+          Upload a clear photo of a blood test, diagnostic report, or handwritten prescription. Gemini Vision extracts findings into a structured SBAR clinical report.
+        </p>
+
+        <textarea id="clinicalInput" rows="3" placeholder="Enter test notes, symptoms, or list of medicines..."></textarea>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between;">
+          <label class="btn btn-glass" style="margin:0;cursor:pointer;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#22d3ee" stroke-width="2.2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>
+            </svg>
+            <span id="uploadLabelText">Upload Lab / Prescription Photo</span>
+            <input type="file" id="clinicalFileInput" accept="image/*" class="hidden" onchange="handleClinicalImage(event)" />
+          </label>
+
+          <button class="btn btn-grad" id="runClinicalBtn" onclick="runClinicalAnalysis()">Generate AI SBAR Clinical Analysis</button>
+        </div>
+
+        <div id="clinicalImgPreviewWrap" class="hidden" style="margin-top:12px;">
+          <img id="clinicalImgPreview" class="post-media" alt="Uploaded medical document" />
+          <button class="btn btn-glass" style="margin-top:6px;padding:5px 10px;font-size:12px;" onclick="clearClinicalImage()">Remove Image</button>
+        </div>
+
+        <!-- LIVE SBAR RESULT + ONE-CLICK PDF DOWNLOAD -->
+        <div id="activeSbarCard" class="sbar-box hidden">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+            <strong style="color:#67e8f9;font-size:14px;">Generated SBAR Clinical Assessment</strong>
+            <button class="btn btn-pdf" style="padding:6px 12px;font-size:12px;" onclick="printSbarPdf(latestActiveRecord)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34d399" stroke-width="2.2">
+                <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>
+              </svg>
+              <span>Download / Print PDF SBAR</span>
+            </button>
+          </div>
+          <div id="activeSbarText" style="white-space:pre-wrap;"></div>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <h3 style="margin:0;font-size:16px;">Real-Time Longitudinal Health History</h3>
+        <span style="font-size:12px;color:var(--muted);">Auto-synced SBAR archive</span>
+      </div>
+      <div id="historyFeed"></div>
+    </main>
+
+    <!-- RIGHT SIDEBAR: AUTO AI VOICE FOLLOW-UP SCHEDULER & CARE DESK -->
+    <aside>
+      <div class="glass-panel card-pad" style="margin-bottom:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+          <h3 style="margin:0;font-size:15px;">Daily / Weekly AI Follow-Up</h3>
+          <button class="btn btn-call" style="padding:4px 9px 13px;font-size:10px;" onclick="showVoiceCallComingSoon()">
+            <span>Auto Voice</span>
+            <span class="coming-tag" style="font-size:8px;">Coming Soon</span>
+          </button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin:0 0 10px;">
+          Schedule automated daily or weekly AI health check-ins linked to your history.
+        </p>
+        <select id="followupFreq">
+          <option value="Daily Check-In">Daily AI Check-In</option>
+          <option value="Weekly Progress Review">Weekly AI Progress Review</option>
+        </select>
+        <input type="text" id="followupTopic" placeholder="e.g., Blood pressure, Antibiotic course, Fever..." />
+        <button class="btn btn-grad" style="width:100%" onclick="scheduleFollowup()">Activate Follow-Up Plan</button>
+        <div id="followupList" style="margin-top:12px;display:flex;flex-direction:column;gap:8px;"></div>
+      </div>
+
+      <div class="glass-panel card-pad">
+        <h3 style="margin:0 0 8px;font-size:15px;">Live Clinical Triage Desk</h3>
+        <div class="chat-box" id="chatMessages"></div>
+        <div style="display:flex;gap:6px;">
+          <input type="text" id="chatInput" placeholder="Ask care desk..." style="margin:0;" onkeydown="if(event.key==='Enter') sendChat()" />
+          <button class="btn btn-grad" onclick="sendChat()">Send</button>
+        </div>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<!-- AUTH MODAL -->
+<div class="modal-bg" id="authModal">
+  <div class="glass-panel modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h3 style="margin:0;">MediPulse AI Portal</h3>
+      <button class="btn btn-glass" style="padding:5px 10px;" onclick="closeModal('authModal')">X</button>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;">
+      <button class="btn btn-grad" id="btnShowLogin" style="flex:1" onclick="toggleAuthTab('login')">Sign In</button>
+      <button class="btn btn-glass" id="btnShowReg" style="flex:1" onclick="toggleAuthTab('register')">Register</button>
+    </div>
+    <div id="authErr" class="sbar-box hidden" style="border-color:#ef4444;color:#fecaca;margin-bottom:12px;"></div>
+
+    <form id="loginForm" onsubmit="loginUser(event)">
+      <label>Email</label>
+      <input type="email" id="logEmail" required placeholder="you@example.com" />
+      <label>Password</label>
+      <input type="password" id="logPass" required placeholder="••••••••" />
+      <button type="submit" class="btn btn-grad" style="width:100%">Sign In</button>
+    </form>
+
+    <form id="regForm" class="hidden" onsubmit="registerUser(event)">
+      <label>Full Name</label>
+      <input type="text" id="regName" required placeholder="Patient or Doctor Name" />
+      <label>Email</label>
+      <input type="email" id="regEmail" required placeholder="you@example.com" />
+      <label>Password (min 6 chars)</label>
+      <input type="password" id="regPass" minlength="6" required placeholder="Create password" />
+      <button type="submit" class="btn btn-grad" style="width:100%">Create Health Account</button>
+    </form>
+  </div>
+</div>
+
+<!-- ADMIN GEMINI API VAULT MODAL (ONLY ORINMASHRUQE@GMAIL.COM) -->
+<div class="modal-bg" id="adminModal">
+  <div class="glass-panel modal-card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+      <h3 style="margin:0;">Admin Gemini API Vault</h3>
+      <button class="btn btn-glass" style="padding:5px 10px;" onclick="closeModal('adminModal')">X</button>
+    </div>
+    <p style="font-size:13px;color:var(--muted);margin-top:0;">
+      Locked exclusively to <strong>orinmashruqe@gmail.com</strong>. Save your single master Google Gemini API key here to activate Vision & Clinical Triage AI for all users.
+    </p>
+    <label>Google Gemini API Key (AIza...)</label>
+    <input type="password" id="adminGeminiKeyInput" placeholder="Paste Gemini API key..." />
+    <label>Clinical AI Model</label>
+    <select id="adminGeminiModelInput">
+      <option value="gemini-2.5-flash">gemini-2.5-flash (Fast Multimodal Vision)</option>
+      <option value="gemini-2.5-pro">gemini-2.5-pro (Complex Clinical Reasoning)</option>
+    </select>
+    <button class="btn btn-grad" style="width:100%" onclick="saveAdminGeminiKey()">Save Master API Key</button>
+  </div>
+</div>
+
+<script>
+  const SUPABASE_URL = "https://uacgsfwjaodwoticjeyn.supabase.co";
+  const SUPABASE_KEY = "sb_publishable_FWFj-TnKYchoM0JFYOsP6Q_8isdqHW2";
+  const ADMIN_EMAIL = "orinmashruqe@gmail.com";
+  const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let currentUser = null;
+  let currentProfile = null;
+  let activeTab = "lab";
+  let clinicalFile = null;
+  let clinicalBase64 = null;
+  let clinicalMime = null;
+  let geminiConfig = { api_key: "", model: "gemini-2.5-flash" };
+  let allRecords = [];
+  let activeFollowups = [];
+  let latestActiveRecord = null;
+
+  function openModal(id) { document.getElementById(id).classList.add("open"); }
+  function closeModal(id) { document.getElementById(id).classList.remove("open"); }
+
+  function showVoiceCallComingSoon() {
+    alert("AI Voice Calling & Tele-Doctor Video Consultations are queued in the clinical roadmap (Coming Soon). Daily/Weekly follow-up plans are active and included in your SBAR reports!");
+  }
+
+  function isAdminUser() {
+    return currentUser && currentUser.email && currentUser.email.toLowerCase() === ADMIN_EMAIL;
+  }
+
+  function toggleAuthTab(tab) {
+    document.getElementById("authErr").classList.add("hidden");
+    const isLogin = tab === "login";
+    document.getElementById("loginForm").classList.toggle("hidden", !isLogin);
+    document.getElementById("regForm").classList.toggle("hidden", isLogin);
+    document.getElementById("btnShowLogin").className = isLogin ? "btn btn-grad" : "btn btn-glass";
+    document.getElementById("btnShowReg").className = !isLogin ? "btn btn-grad" : "btn btn-glass";
+  }
+
+  function switchClinicalTab(tab) {
+    activeTab = tab;
+    ["lab", "triage", "drug"].forEach(t => {
+      document.getElementById("tab_" + t).classList.toggle("active", t === tab);
+    });
+    const hints = {
+      lab: "Upload a clear photo of a blood test, diagnostic report, or handwritten prescription. Gemini Vision extracts findings into a structured SBAR clinical report.",
+      triage: "Describe symptoms, duration, and severity (plus optional photo). Gemini AI assesses red-flag urgency and recommends the exact medical specialist.",
+      drug: "Enter your current medicines or upload a photo of medicine strips. Gemini AI checks dosing instructions, side effects, and drug-to-drug interactions."
+    };
+    const placeholders = {
+      lab: "Add context (e.g., Fasting blood sugar & CBC report from today)...",
+      triage: "Describe symptoms (e.g., Persistent chest tightness, mild fever for 2 days)...",
+      drug: "List medicines (e.g., Napa Extra, Sergel 20mg, Azithromycin 500mg)..."
+    };
+    document.getElementById("moduleHint").textContent = hints[tab];
+    document.getElementById("clinicalInput").placeholder = placeholders[tab];
+  }
+
+  async function loadGeminiConfig() {
+    const { data } = await db.from("medipulse_settings").select("*").eq("id", 1).maybeSingle();
+    const badge = document.getElementById("aiEngineStatus");
+    if (data && data.gemini_api_key) {
+      geminiConfig.api_key = data.gemini_api_key;
+      geminiConfig.model = data.gemini_model || "gemini-2.5-flash";
+      badge.textContent = "Active";
+      badge.style.color = "#34d399";
+      if (isAdminUser()) {
+        document.getElementById("adminGeminiKeyInput").value = data.gemini_api_key;
+        document.getElementById("adminGeminiModelInput").value = geminiConfig.model;
+      }
+    } else {
+      badge.textContent = "Awaiting Admin Key";
+      badge.style.color = "#fcd34d";
+    }
+  }
+
+  async function saveAdminGeminiKey() {
+    if (!isAdminUser()) return alert("Unauthorized: Only orinmashruqe@gmail.com can configure the Gemini API key.");
+    const key = document.getElementById("adminGeminiKeyInput").value.trim();
+    const model = document.getElementById("adminGeminiModelInput").value;
+    if (!key) return alert("Please paste your Google Gemini API key.");
+
+    const { error } = await db.from("medipulse_settings").upsert([{
+      id: 1,
+      gemini_api_key: key,
+      gemini_model: model,
+      updated_by: currentUser.email
+    }]);
+    if (error) return alert("Error saving key: " + error.message);
+
+    await loadGeminiConfig();
+    closeModal("adminModal");
+    alert("Master Gemini API key saved! Clinical AI modules are now live.");
+  }
+
+  async function callGemini(promptText, base64Data = null, mimeType = null) {
+    if (!geminiConfig.api_key) await loadGeminiConfig();
+    if (!geminiConfig.api_key) {
+      throw new Error("Clinical Gemini AI is not active yet. Admin (orinmashruqe@gmail.com) must save the API key in the Admin Vault.");
+    }
+
+    const parts = [{ text: promptText }];
+    if (base64Data && mimeType && mimeType.startsWith("image/")) {
+      parts.push({ inline_data: { mime_type: mimeType, data: base64Data } });
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${geminiConfig.model}:generateContent?key=${encodeURIComponent(geminiConfig.api_key)}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contents: [{ parts }] })
+    });
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error?.message || "Gemini API error.");
+    return json.candidates?.[0]?.content?.parts?.[0]?.text || "No response generated.";
+  }
+
+  function handleClinicalImage(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    clinicalFile = file;
+    clinicalMime = file.type;
+    document.getElementById("clinicalImgPreviewWrap").classList.remove("hidden");
+    document.getElementById("clinicalImgPreview").src = URL.createObjectURL(file);
+
+    const reader = new FileReader();
+    reader.onload = () => { clinicalBase64 = reader.result.split(",")[1]; };
+    reader.readAsDataURL(file);
+  }
+
+  function clearClinicalImage() {
+    clinicalFile = null;
+    clinicalBase64 = null;
+    clinicalMime = null;
+    document.getElementById("clinicalFileInput").value = "";
+    document.getElementById("clinicalImgPreviewWrap").classList.add("hidden");
+  }
+
+  async function runClinicalAnalysis() {
+    const userText = document.getElementById("clinicalInput").value.trim();
+    if (!userText && !clinicalFile) {
+      return alert("Please enter symptoms/medicines or upload a lab report / prescription image first.");
+    }
+
+    const btn = document.getElementById("runClinicalBtn");
+    const card = document.getElementById("activeSbarCard");
+    const out = document.getElementById("activeSbarText");
+
+    btn.disabled = true;
+    btn.textContent = "Analyzing Clinical Data...";
+    card.classList.remove("hidden");
+    out.innerHTML = "<em>Gemini Clinical Vision & Reasoning Engine is generating your SBAR report...</em>";
+
+    const modeLabels = {
+      lab: "Lab Report & Prescription Vision Analysis",
+      triage: "AI Symptom Triage & Specialist Routing",
+      drug: "Medication & Drug Interaction Check"
+    };
+
+    const patientName = currentProfile?.full_name || "Guest Patient";
+    const patientMeta = currentProfile?.health_meta || "Not specified";
+
+    const systemPrompt = `You are MediPulse AI, a clinical decision-support and patient health assistant.
+Module: ${modeLabels[activeTab]}
+Patient: ${patientName} (${patientMeta})
+Patient Input: "${userText || "Attached medical image"}"
+
+Respond strictly in a clean, structured SBAR Clinical Report format with clear headings:
+1. SITUATION: Concise summary of the uploaded report, symptoms, or medications.
+2. BACKGROUND: Relevant clinical context, biomarkers/medicines identified, or baseline factors.
+3. ASSESSMENT: Clear explanation of findings, abnormal values, potential drug interactions, or triage urgency level (Routine / Urgent / Emergency Red Flags).
+4. RECOMMENDATION: Recommended specialist to consult, safe next steps, and suggested Daily/Weekly follow-up monitoring.
+Include a brief clinical disclaimer that AI analysis supports—and does not replace—licensed physician evaluation.`;
+
+    try {
+      const sbarText = await callGemini(systemPrompt, clinicalBase64, clinicalMime);
+      out.textContent = sbarText;
+
+      let uploadedUrl = "";
+      if (clinicalFile) {
+        const path = `medipulse/${Date.now()}_${clinicalFile.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+        const { error: upErr } = await db.storage.from("media").upload(path, clinicalFile);
+        if (!upErr) {
+          const { data: pub } = db.storage.from("media").getPublicUrl(path);
+          uploadedUrl = pub.publicUrl;
+        }
+      }
+
+      const recordPayload = {
+        user_id: currentUser?.id || null,
+        patient_name: patientName,
+        patient_email: currentUser?.email || "guest",
+        record_type: modeLabels[activeTab],
+        patient_input: userText || "Uploaded medical document",
+        sbar_report: sbarText,
+        media_url: uploadedUrl,
+        created_at: new Date().toISOString()
+      };
+
+      latestActiveRecord = recordPayload;
+      await db.from("medipulse_records").insert([{
+        user_id: recordPayload.user_id,
+        patient_name: recordPayload.patient_name,
+        patient_email: recordPayload.patient_email,
+        record_type: recordPayload.record_type,
+        patient_input: recordPayload.patient_input,
+        sbar_report: recordPayload.sbar_report,
+        media_url: recordPayload.media_url
+      }]);
+
+      await loadHistory();
+    } catch (err) {
+      out.innerHTML = `<span style="color:#fca5a5;">${esc(err.message)}</span>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Generate AI SBAR Clinical Analysis";
+    }
+  }
+
+  function exportLatestOrActiveSbarPdf() {
+    const target = latestActiveRecord || allRecords[0];
+    if (!target) {
+      return alert("No SBAR report available yet. Run an AI clinical analysis first to generate a downloadable PDF SBAR report!");
+    }
+    printSbarPdf(target);
+  }
+
+  function printSbarPdfByIndex(idx) {
+    const rec = allRecords[idx];
+    if (rec) printSbarPdf(rec);
+  }
+
+  function printSbarPdf(rec) {
+    const win = window.open("", "_blank");
+    if (!win) return alert("Please allow pop-ups in your browser to download/print the PDF SBAR report.");
+
+    const followupsHtml = activeFollowups.length
+      ? activeFollowups.map(f => `<li><strong>${esc(f.frequency)}:</strong> ${esc(f.topic)} — <em>${esc(f.status)}</em></li>`).join("")
+      : "<li>No automated voice follow-ups scheduled yet.</li>";
+
+    const formattedSbar = esc(rec.sbar_report || "")
+      .replace(/\*\*(.*?)\*\*/g, "<strong>$1</strong>")
+      .replace(/
+/g, "<br/>");
+
+    win.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>MediPulse AI — SBAR Clinical Report</title>
+  <style>
+    body { font-family: 'Segoe UI', Arial, sans-serif; color: #0f172a; margin: 36px; line-height: 1.55; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #0891b2; padding-bottom: 14px; margin-bottom: 20px; }
+    .logo { font-size: 22px; font-weight: 800; color: #0891b2; }
+    .sub { font-size: 12px; color: #475569; }
+    .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f1f5f9; padding: 14px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; }
+    .section-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: #0f172a; background: #e0f2fe; padding: 6px 12px; border-left: 4px solid #0891b2; margin: 18px 0 10px; }
+    .sbar-body { font-size: 13.5px; background: #ffffff; border: 1px solid #cbd5e1; border-radius: 8px; padding: 16px; }
+    .disclaimer { margin-top: 26px; padding-top: 12px; border-top: 1px solid #cbd5e1; font-size: 11px; color: #64748b; }
+    @media print { .no-print { display: none; } body { margin: 18px; } }
+  </style>
+</head>
+<body>
+  <div class="no-print" style="margin-bottom:16px;text-align:right;">
+    <button onclick="window.print()" style="background:#0891b2;color:#fff;border:none;padding:10px 18px;border-radius:8px;font-weight:700;cursor:pointer;">Save as PDF / Print Report</button>
+  </div>
+
+  <div class="header">
+    <div>
+      <div class="logo">MediPulse AI — Clinical SBAR Report</div>
+      <div class="sub">Multimodal Lab Vision, Symptom Triage & Medication Decision Support</div>
+    </div>
+    <div style="text-align:right;font-size:12px;color:#334155;">
+      <strong>Report Date:</strong> ${new Date(rec.created_at || Date.now()).toLocaleString()}<br/>
+      <strong>Module:</strong> ${esc(rec.record_type)}
+    </div>
+  </div>
+
+  <div class="meta-grid">
+    <div><strong>Patient Name:</strong> ${esc(rec.patient_name)}</div>
+    <div><strong>Account / Email:</strong> ${esc(rec.patient_email || "Guest")}</div>
+    <div><strong>Clinical Profile:</strong> ${esc(currentProfile?.health_meta || "Standard Profile")}</div>
+    <div><strong>Submitted Query:</strong> ${esc(rec.patient_input)}</div>
+  </div>
+
+  <div class="section-title">Structured SBAR Clinical Assessment</div>
+  <div class="sbar-body">${formattedSbar}</div>
+
+  <div class="section-title">Scheduled Daily / Weekly AI Follow-Up Plan</div>
+  <ul style="font-size:13px;">${followupsHtml}</ul>
+
+  <div class="disclaimer">
+    <strong>Clinical Governance Notice:</strong> Generated by MediPulse AI Clinical Decision Support. This SBAR summary is designed to assist patient understanding and physician handoff; it does not constitute a final medical diagnosis. In case of severe chest pain, breathing difficulty, or acute emergency, seek immediate hospital care.
+  </div>
+
+  <script>setTimeout(() => window.print(), 350);<\/script>
+</body>
+</html>`);
+    win.document.close();
+  }
+
+  async function loadHistory() {
+    const { data } = await db.from("medipulse_records").select("*").order("created_at", { ascending: false }).limit(25);
+    allRecords = data || [];
+    const box = document.getElementById("historyFeed");
+    if (!allRecords.length) {
+      box.innerHTML = `<div class="glass-panel record-card" style="text-align:center;color:var(--muted);">No clinical records yet. Run your first Lab Vision, Symptom Triage, or Drug Interaction check above!</div>`;
+      return;
+    }
+
+    box.innerHTML = allRecords.map((r, i) => `
+      <div class="glass-panel record-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
+          <div>
+            <span class="pill">${esc(r.record_type)}</span>
+            <strong style="margin-left:8px;font-size:14px;">${esc(r.patient_name)}</strong>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-size:11px;color:var(--muted);">${new Date(r.created_at).toLocaleString()}</span>
+            <button class="btn btn-pdf" style="padding:5px 10px;font-size:11px;" onclick="printSbarPdfByIndex(${i})">
+              Download / Print PDF SBAR
+            </button>
+          </div>
+        </div>
+        <div style="font-size:12px;color:#93c5fd;margin-bottom:6px;"><strong>Input:</strong> ${esc(r.patient_input)}</div>
+        ${r.media_url ? `<img src="${esc(r.media_url)}" class="post-media" style="max-height:200px;margin-bottom:10px;" alt="Clinical upload" />` : ""}
+        <div class="sbar-box" style="white-space:pre-wrap;margin-top:6px;">${esc(r.sbar_report)}</div>
+      </div>
+    `).join("");
+  }
+
+  async function scheduleFollowup() {
+    const frequency = document.getElementById("followupFreq").value;
+    const topic = document.getElementById("followupTopic").value.trim();
+    if (!topic) return alert("Enter a condition, symptom, or medication to monitor.");
+
+    await db.from("medipulse_followups").insert([{
+      user_id: currentUser?.id || null,
+      patient_name: currentProfile?.full_name || "Guest Patient",
+      frequency,
+      topic,
+      status: "Active (Voice Call Coming Soon)"
+    }]);
+    document.getElementById("followupTopic").value = "";
+    await loadFollowups();
+  }
+
+  async function loadFollowups() {
+    const { data } = await db.from("medipulse_followups").select("*").order("created_at", { ascending: false }).limit(8);
+    activeFollowups = data || [];
+    const list = document.getElementById("followupList");
+    list.innerHTML = activeFollowups.map(f => `
+      <div style="background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);border-radius:10px;padding:8px 10px;font-size:12px;">
+        <div style="font-weight:700;color:#67e8f9;">${esc(f.frequency)}: ${esc(f.topic)}</div>
+        <div style="font-size:11px;color:#fcd34d;">${esc(f.status)}</div>
+      </div>
+    `).join("");
+  }
+
+  async function registerUser(e) {
+    e.preventDefault();
+    const fullName = document.getElementById("regName").value.trim();
+    const email = document.getElementById("regEmail").value.trim().toLowerCase();
+    const password = document.getElementById("regPass").value;
+    const { data, error } = await db.auth.signUp({ email, password });
+    if (error) {
+      const errBox = document.getElementById("authErr");
+      errBox.textContent = error.message;
+      errBox.classList.remove("hidden");
+      return;
+    }
+    if (data.user) {
+      await db.from("medipulse_profiles").upsert([{
+        id: data.user.id,
+        email,
+        full_name: fullName,
+        health_meta: email === ADMIN_EMAIL ? "Clinical Platform Admin" : "Patient Health Profile"
+      }]);
+      await setupSession(data.user);
+      closeModal("authModal");
+    }
+  }
+
+  async function loginUser(e) {
+    e.preventDefault();
+    const email = document.getElementById("logEmail").value.trim().toLowerCase();
+    const password = document.getElementById("logPass").value;
+    const { data, error } = await db.auth.signInWithPassword({ email, password });
+    if (error) {
+      const errBox = document.getElementById("authErr");
+      errBox.textContent = error.message;
+      errBox.classList.remove("hidden");
+      return;
+    }
+    await setupSession(data.user);
+    closeModal("authModal");
+  }
+
+  async function logoutUser() {
+    await db.auth.signOut();
+    location.reload();
+  }
+
+  async function setupSession(user) {
+    currentUser = user;
+    let { data: prof } = await db.from("medipulse_profiles").select("*").eq("id", user.id).maybeSingle();
+    if (!prof) {
+      prof = {
+        id: user.id,
+        email: user.email,
+        full_name: user.email.split("@")[0],
+        health_meta: isAdminUser() ? "Clinical Platform Admin" : "Patient Health Profile",
+        avatar_url: ""
+      };
+      await db.from("medipulse_profiles").upsert([prof]);
+    }
+    currentProfile = prof;
+
+    document.getElementById("sideName").textContent = prof.full_name;
+    document.getElementById("sideMeta").textContent = prof.health_meta || "";
+    document.getElementById("editNameInput").value = prof.full_name;
+    document.getElementById("editMetaInput").value = prof.health_meta || "";
+    document.getElementById("profileEditBox").classList.remove("hidden");
+
+    if (prof.avatar_url) {
+      document.getElementById("sideAvatarImg").src = prof.avatar_url;
+      document.getElementById("sideAvatarImg").classList.remove("hidden");
+      document.getElementById("sideAvatarInitial").classList.add("hidden");
+    } else {
+      document.getElementById("sideAvatarInitial").textContent = prof.full_name.slice(0, 2).toUpperCase();
+    }
+
+    const roleBadge = document.getElementById("sideRoleBadge");
+    if (isAdminUser()) {
+      roleBadge.innerHTML = `<span class="pill admin">Clinical Super Admin</span>`;
+      document.getElementById("adminVaultBtn").classList.remove("hidden");
+    } else {
+      roleBadge.innerHTML = `<span class="pill">Verified Patient</span>`;
+    }
+
+    const authBtn = document.getElementById("authHeaderBtn");
+    authBtn.textContent = "Log Out";
+    authBtn.onclick = logoutUser;
+    await loadGeminiConfig();
+  }
+
+  async function uploadAvatar(e) {
+    const file = e.target.files[0];
+    if (!file || !currentUser) return;
+    const path = `avatars/${currentUser.id}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.]/g, "_")}`;
+    const { error } = await db.storage.from("media").upload(path, file, { upsert: true });
+    if (error) return alert("Upload failed: " + error.message);
+    const { data: pub } = db.storage.from("media").getPublicUrl(path);
+    currentProfile.avatar_url = pub.publicUrl;
+    await db.from("medipulse_profiles").update({ avatar_url: pub.publicUrl }).eq("id", currentUser.id);
+    document.getElementById("sideAvatarImg").src = pub.publicUrl;
+    document.getElementById("sideAvatarImg").classList.remove("hidden");
+    document.getElementById("sideAvatarInitial").classList.add("hidden");
+  }
+
+  async function saveProfile() {
+    if (!currentUser) return;
+    const full_name = document.getElementById("editNameInput").value.trim() || currentProfile.full_name;
+    const health_meta = document.getElementById("editMetaInput").value.trim();
+    await db.from("medipulse_profiles").update({ full_name, health_meta }).eq("id", currentUser.id);
+    currentProfile.full_name = full_name;
+    currentProfile.health_meta = health_meta;
+    document.getElementById("sideName").textContent = full_name;
+    document.getElementById("sideMeta").textContent = health_meta;
+    alert("Health profile saved!");
+  }
+
+  async function loadChat() {
+    const { data: msgs } = await db.from("medipulse_chat").select("*").order("created_at", { ascending: true }).limit(30);
+    const box = document.getElementById("chatMessages");
+    if (!msgs || !msgs.length) {
+      box.innerHTML = `<div style="color:var(--muted);font-size:12px;text-align:center;margin-top:70px;">Clinical Triage Desk online.</div>`;
+      return;
+    }
+    box.innerHTML = msgs.map(m => {
+      const isMe = currentUser && m.sender_email === currentUser.email;
+      return `
+        <div class="msg-bubble ${isMe ? "me" : ""}">
+          <div style="font-size:10px;color:#67e8f9;font-weight:700;">${esc(m.sender_name)}</div>
+          <div>${esc(m.message)}</div>
+        </div>
+      `;
+    }).join("");
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function sendChat() {
+    const input = document.getElementById("chatInput");
+    const text = input.value.trim();
+    if (!text) return;
+    input.value = "";
+    await db.from("medipulse_chat").insert([{
+      sender_name: currentProfile?.full_name || "Patient",
+      sender_email: currentUser?.email || "guest",
+      message: text
+    }]);
+    await loadChat();
+  }
+
+  function esc(str) {
+    return String(str || "").replace(/[&<>'"]/g, t => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    }[t]));
+  }
+
+  (async function init() {
+    await loadGeminiConfig();
+    const { data: { session } } = await db.auth.getSession();
+    if (session && session.user) await setupSession(session.user);
+    await loadHistory();
+    await loadFollowups();
+    await loadChat();
+    setInterval(loadChat, 6000);
+  })();
+</script>
+</body>
+</html>
