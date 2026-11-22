@@ -1,9 +1,6 @@
 # MediPulse AI — Clinical Vision, Triage & SBAR Intelligence Platform
 
-![Status](https://shields.io)
-![AI Engine](https://shields.io)
-![Clinical Standard](https://shields.io)
-![Market](https://shields.io)
+`Live Web App` · `Google Gemini Vision` · `PDF SBAR Standard` · `Bangladesh Clinics & Telehealth`
 
 **MediPulse AI** is an AI-first clinical & patient health assistant platform built for diagnostic centers, outpatient clinics, and telehealth partners. It bridges the gap between complex medical reports, handwritten prescriptions, and everyday patient understanding—turning raw lab sheets and symptoms into hospital-standard **PDF SBAR Clinical Reports** in seconds.
 
